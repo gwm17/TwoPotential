@@ -4,9 +4,8 @@ import numpy as np
 import scipy as sp 
 import matplotlib as mp 
 
-CHARGE = 1.67e-17 #Coulombs
+CHARGE = 1.602e-19 #Coulombs
 HBAR = 193.173 #MeV*fm
-BEAME = 
 
 def ReducedMass(m1, m2) :
 	return m1*m2/(m1+m2)
@@ -53,7 +52,7 @@ def FindMaximumHeight(dr, rmax, A, Z1, Z2, V0, m, l) :
 			curMax = curV
 	return r, curMax
 
-def NumerovSolver(nsteps, rmax, A, Z1, Z2, V0, m, l, VB, rB, Potential) :
+def NumerovSolver(nsteps, rmax, E, A, Z1, Z2, V0, m, l, VB, rB, Potential) :
 	dr, r_range = np.linspace(0, rmax, num=nsteps, retstep=True)
 	np.append(r_range, r_range[nsteps-1] + dr)
 	u = np.zeros(nsteps)
@@ -62,9 +61,9 @@ def NumerovSolver(nsteps, rmax, A, Z1, Z2, V0, m, l, VB, rB, Potential) :
 	u[1] = dr
 	u_pastBoundary = 0
 	for i in np.arange(2, nsteps+1) :
-		k2_3 = 2.0*m*(BEAME - Potential(r_range[i], A, Z1, Z2, V0, m, l, VB, rB))/HBAR**2.0
-		k2_2 = 2.0*m*(BEAME - Potential(r_range[i-1], A, Z1, Z2, V0, m, l, VB, rB))/HBAR**2.0
-		k2_1 = 2.0*m*(BEAME - Potential(r_range[i-2], A, Z1, Z2, V0, m, l, VB, rB))/HBAR**2.0
+		k2_3 = 2.0*m*(E - Potential(r_range[i], A, Z1, Z2, V0, m, l, VB, rB))/HBAR**2.0
+		k2_2 = 2.0*m*(E - Potential(r_range[i-1], A, Z1, Z2, V0, m, l, VB, rB))/HBAR**2.0
+		k2_1 = 2.0*m*(E - Potential(r_range[i-2], A, Z1, Z2, V0, m, l, VB, rB))/HBAR**2.0
 		a = 1.0 + fac*k2_3
 		b = 2.0*(1.0 - 5.0*fac*k2_2)
 		c = 1.0 + fac*k2_1
