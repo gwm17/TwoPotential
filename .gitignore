@@ -2,6 +2,6 @@
 
 /__pycache__
 /__pycache__/*
-*.sublime_project
-*.sublime_workspace
+*.sublime-project
+*.sublime-workspace
 
