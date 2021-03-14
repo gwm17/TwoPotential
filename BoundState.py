@@ -24,7 +24,7 @@ class BoundState:
 		self.rB = rB
 
 	def NumerovSolver(self, nsteps, rmax, k2_b, V0) :
-		r_range, dr = np.linspace(0, rmax, num=nsteps, retstep=True)
+		r_range, dr = np.linspace(1e-14, rmax, num=nsteps, retstep=True)
 		np.append(r_range, r_range[nsteps-1] + dr)
 		u = np.zeros(nsteps)
 		fac = dr**2.0/12.0
@@ -67,8 +67,7 @@ class BoundState:
 			psi1 = psi2
 			logder, psi2 = self.NumerovSolver(nsteps, rmax, k2_b, V2)
 			V1, V2 =V2, V2 - psi2[nsteps-1]*(V2-V1)/(psi2[nsteps-1] - psi1[nsteps-1])
-		print("")
-		print("Found potential depth to be: ",V2," with precison ",self.tolerance)
+		print(" Found potential depth to be: ",V2," with precison ",self.tolerance)
 		return V2, psi2
 
 

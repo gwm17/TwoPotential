@@ -2,11 +2,13 @@
 
 import numpy as np 
 import scipy as sp 
-import matplotlib as mp
+import matplotlib.pyplot as plt
 from MassTable import Masses
 import BoundState as BS
 
-HBAR = 193.173 #MeV*fm
+HBARC = 193.173 #MeV*fm
+C = 3.0e8*1e15 #fm/s
+HBAR = 6.5821e-16*1e-6 #MeV*s
 ALPHA = 1.0/137.0 #Fine structure const
 
 def ReducedMass(m1, m2) :
@@ -16,15 +18,15 @@ def WoodSaxson(r, A, V0, m) :
 	r0 = 1.17
 	a = 0.75
 	R0 = r0*A**(1.0/3.0)
-	return -2.0*m*V0/(HBAR**2.0*(1.0 + np.exp((r-R0)/a)))
+	return -2.0*m*V0/(HBARC**2.0*(1.0 + np.exp((r-R0)/a)))
 
 def Coulomb(r, Z1, Z2, A, m) :
 	r0 = 1.17
 	R0 = r0*A**(1.0/3.0)
 	if r <= R0 :
-		return ALPHA*2.0*m*Z1*Z2/(2.0*HBAR*R0)*(3.0 - r**2.0/(R0**2.0))
+		return ALPHA*2.0*m*Z1*Z2/(2.0*HBARC*R0)*(3.0 - r**2.0/(R0**2.0))
 	else :
-		return ALPHA*2.0*m*Z1*Z2/(HBAR*r)
+		return ALPHA*2.0*m*Z1*Z2/(HBARC*r)
 
 def Centripital(r, m, l) :
 	if l == 0 :
@@ -48,17 +50,32 @@ def PotentialWTilde(r, A, Z1, Z2, V0, m, l, VB, rB) :
 		return PotentialV(r, A, Z1, Z2, V0, m, l)
 
 def FindMaximumHeight(steps, rmax, A, Z1, Z2, V0, m, l) :
-	r_range = np.linspace(0, rmax, steps)
+	R = (1.17*A**0.33)/2.0
+	r_range = np.linspace(R, rmax, steps)
 	curMax = 0.0
 	curV = 0.0
+	rMax = 0.0
 	for r in r_range :
 		curV = PotentialV(r, A, Z1, Z2, V0, m, l)
 		if curV > curMax :
 			curMax = curV
-	return r, curMax
+			rMax = r
+	return rMax, curMax
+
+def GeneratePotential(steps, rmax, A, Z1, Z2, V0, m, l, VB, rB, Potential) :
+	r_range = np.linspace(1.0, rmax, steps)
+	V_values = np.zeros(steps)
+	for i in np.arange(0, steps):
+		if VB == 0.0 :
+			V_values[i] = HBARC**2.0/(2.0*m)*Potential(r_range[i], A, Z1, Z2, V0, m, l)
+		else :
+			V_values[i] = HBARC**2.0/(2.0*m)*Potential(r_range[i], A, Z1, Z2, V0, m, l, VB, rB)
+	return V_values, r_range
+
+
 
 def NumerovSolver(nsteps, rmax, k2_b, A, Z1, Z2, V0, m, l, VB, rB, Potential) :
-	dr, r_range = np.linspace(0, rmax, num=nsteps, retstep=True)
+	dr, r_range = np.linspace(1e-14, rmax, num=nsteps, retstep=True)
 	np.append(r_range, r_range[nsteps-1] + dr)
 	u = np.zeros(nsteps)
 	fac = dr**2.0/12.0
@@ -81,28 +98,49 @@ def NumerovSolver(nsteps, rmax, k2_b, A, Z1, Z2, V0, m, l, VB, rB, Potential) :
 	return logDerivAtBoundary, u
 
 
+def GenerateNormWavefunc(u_array, rmax, nsteps) :
+	r_range = np.linspace(1e-14, rmax, nsteps)
+	psi = np.zeros(nsteps)
+	for i in np.arange(0, nsteps) :
+		psi[i] = u_array[i]/r_range[i]
+	#HERE
+
 def main() :
 	Ap = 1
 	Zp = 1
 	A12C = 12
 	Z12C = 6
 	V0_guess = 50.0
+	l_mom = 0
 	m12C = Masses.GetMass(6, 12)
 	mproton = Masses.GetMass(1,1)
 	redMass = ReducedMass(m12C, mproton)
 	A = 12
 	Zp = 1
 
-	rB, VB = FindMaximumHeight(1000, 3.0*1.17*A12C**(1.0/3.0), A12C, Z12C, Zp, V0_guess, redMass, 0)
+	rB, VB = FindMaximumHeight(1000, 3.0*1.17*A12C**(1.0/3.0), A12C, Z12C, Zp, V0_guess, redMass, l_mom)
 
 	print("Maximum height of barrier found to be: ", rB, " with a height of: ",VB)
 
-	bsSolver = BS.BoundState(A12C, Z12C, Zp, redMass, 0, VB, rB, PotentialU, 0.000001)
+	bsSolver = BS.BoundState(A12C, Z12C, Zp, redMass, l_mom, VB, rB, PotentialU, 0.000001)
 
 	print("Solving bound state problem...")
-	V0, psiB = bsSolver.FindV0(0.412, V0_guess,1500,(2.0*rB))
+	V0, uBound = bsSolver.FindV0(0.412, V0_guess,1500,(2.0*rB))
 	print("Finished.")
+
+	V_initial, r_range = GeneratePotential(1500, (2.0*rB),A12C,Z12C,Zp,V0_guess,redMass,l_mom,0,0,PotentialV)
+	V_solved, r_solved = GeneratePotential(1500, (2.0*rB),A12C,Z12C,Zp,V0,redMass,l_mom,0,0,PotentialV)
+	U_initial, r_initial = GeneratePotential(1500, (2.0*rB),A12C,Z12C,Zp,V0_guess,redMass,l_mom,VB,rB,PotentialU)
+	U_final, r_final = GeneratePotential(1500, (2.0*rB),A12C,Z12C,Zp,V0,redMass,l_mom,VB,rB,PotentialU)
+	figure, ax = plt.subplots()
+	#ax.plot(r_range, V_initial, label="V guessed")
+	#ax.plot(r_solved, V_solved, label="V solved")
+	ax.plot(r_initial, U_initial, label="U guessed")
+	ax.plot(r_initial, U_final, label="U solved")
+	plt.legend()
+
 
 if __name__ == '__main__':
 	main()
+	plt.show(block=True)
 
