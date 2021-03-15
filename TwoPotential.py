@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import numpy as np 
-import scipy as sp 
+import scipy as sp
+from scipy import integrate
 import matplotlib.pyplot as plt
 from MassTable import Masses
 import BoundState as BS
@@ -100,10 +101,11 @@ def NumerovSolver(nsteps, rmax, k2_b, A, Z1, Z2, V0, m, l, VB, rB, Potential) :
 
 def GenerateNormWavefunc(u_array, rmax, nsteps) :
 	r_range = np.linspace(1e-14, rmax, nsteps)
-	psi = np.zeros(nsteps)
-	for i in np.arange(0, nsteps) :
-		psi[i] = u_array[i]/r_range[i]
-	#HERE
+	#Use Simpson's Rule to integrate
+	value = integrate.simps(u_array, r_range)
+	print("Result: ", value)
+	u_norm = u_array/value
+	return u_norm, r_range
 
 def main() :
 	Ap = 1
@@ -125,18 +127,24 @@ def main() :
 	bsSolver = BS.BoundState(A12C, Z12C, Zp, redMass, l_mom, VB, rB, PotentialU, 0.000001)
 
 	print("Solving bound state problem...")
-	V0, uBound = bsSolver.FindV0(0.412, V0_guess,1500,(2.0*rB))
+	V0, uBound = bsSolver.FindV0(0.412, V0_guess,15000,(2.0*rB))
 	print("Finished.")
 
-	V_initial, r_range = GeneratePotential(1500, (2.0*rB),A12C,Z12C,Zp,V0_guess,redMass,l_mom,0,0,PotentialV)
-	V_solved, r_solved = GeneratePotential(1500, (2.0*rB),A12C,Z12C,Zp,V0,redMass,l_mom,0,0,PotentialV)
-	U_initial, r_initial = GeneratePotential(1500, (2.0*rB),A12C,Z12C,Zp,V0_guess,redMass,l_mom,VB,rB,PotentialU)
-	U_final, r_final = GeneratePotential(1500, (2.0*rB),A12C,Z12C,Zp,V0,redMass,l_mom,VB,rB,PotentialU)
-	figure, ax = plt.subplots()
-	#ax.plot(r_range, V_initial, label="V guessed")
-	#ax.plot(r_solved, V_solved, label="V solved")
-	ax.plot(r_initial, U_initial, label="U guessed")
-	ax.plot(r_initial, U_final, label="U solved")
+	print("Normalizing bound state wavefunction...")
+	uBoundNorm, r_wavefunc = GenerateNormWavefunc(uBound, 2.0*rB, 15000)
+	print("Finished.")
+
+	V_initial, r_range = GeneratePotential(15000, (2.0*rB),A12C,Z12C,Zp,V0_guess,redMass,l_mom,0,0,PotentialV)
+	V_solved, r_solved = GeneratePotential(15000, (2.0*rB),A12C,Z12C,Zp,V0,redMass,l_mom,0,0,PotentialV)
+	U_initial, r_initial = GeneratePotential(15000, (2.0*rB),A12C,Z12C,Zp,V0_guess,redMass,l_mom,VB,rB,PotentialU)
+	U_final, r_final = GeneratePotential(15000, (2.0*rB),A12C,Z12C,Zp,V0,redMass,l_mom,VB,rB,PotentialU)
+	figure, (ax1, ax2) = plt.subplots(2)
+	#ax1.plot(r_range, V_initial, label="V guessed")
+	#ax1.plot(r_solved, V_solved, label="V solved")
+	ax1.plot(r_initial, U_initial, label="U guessed")
+	ax1.plot(r_initial, U_final, label="U solved")
+
+	ax2.plot(r_wavefunc, uBoundNorm, label="Bound State Wave function")
 	plt.legend()
 
 
