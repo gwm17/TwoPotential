@@ -43,6 +43,7 @@ class BoundState:
 		logDerivAtBoundary = (u_pastBoundary - u[nsteps-2])/(2*dr*u[nsteps-1])
 		return logDerivAtBoundary, u
 
+	#Shoot over V0 depth to find good bound state wave function
 	def FindV0(self, V0_guess, nsteps, rmax) :
 		V1 = V0_guess
 		V2 = V0_guess+0.0001
@@ -52,6 +53,7 @@ class BoundState:
 		logder, psi2 = self.NumerovSolver(nsteps, rmax)
 		print("Shooting over V0 to find optimal depth...")
 
+		#Secant method
 		while abs(V1 - V2) > self.tolerance:
 			self.Potential.V0 = V2
 			self.Potential.VS = -0.2*V2

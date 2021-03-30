@@ -11,7 +11,10 @@ def ReducedMass(m1, m2) :
 	return m1*m2/(m1+m2)
 
 class WKBPotential:
-
+	"""
+	Class representing the WKB approximation. Solves for classical turning points and then 
+	peforms integrtion necessary to calculate decay width.
+	"""
 	def __init__(self, A, Z1, Z2, V0, VS, a0, aS, R0, RS, m, l, j, Eb) :
 		self.Eb = Eb
 		self.m = m

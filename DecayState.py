@@ -45,6 +45,7 @@ class DecayState:
 	def ExteriorWavefunction(self, r) :
 		return np.cos(self.delta_c)*mp.coulombf(self.Potential.l, self.eta, self.k*r) - np.sin(self.delta_c)*mp.coulombg(self.Potential.l, self.eta, self.k*r)
 
+	#solve for the phase shift
 	def SolveDeltaC(self, logder) :
 		f = self.RegCoulomb(self.Potential.rB)
 		g = self.IrregCoulomb(self.Potential.rB)
@@ -126,6 +127,7 @@ class DecayState:
 
 		return u
 
+	#Aberg TPA1 approximation, no intermediate region
 	def TPA1(self, steps, rmax) :
 		fprime = derivative(self.RegCoulomb, self.Potential.rB)
 		gprime = derivative(self.IrregCoulomb, self.Potential.rB)
@@ -154,6 +156,7 @@ class DecayState:
 
 		return u
 
+	#Aberg TPA2 approximation, assume pure coulomb solution
 	def TPA2(self, steps, rmax):
 		u = np.zeros(steps)
 		r_range = np.linspace(0, rmax, steps)

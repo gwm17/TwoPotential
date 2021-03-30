@@ -8,16 +8,23 @@ HBAR = 6.582119569e-16*1e-6 #MeV*s
 ALPHA = 1.0/137.0 #Fine structure const
 
 class NuclearPotential :
+	"""
+	Class which represents a nuclear potential modeled by a Wood-Saxon potential combined with
+	a Coulomb potential, as well as the centrifugal barrier. Holds all relevant parameters. Contains methods 
+	for determining the location of the min and the max of the potential as well as generating data for making plots.
+	NOTE: Potentials are natively handled in units of 1/fm^2. Class contains methods to convert back into MeV.
+	Native units of MeV, fm, s
+	"""
 	def __init__(self, A, Z1, Z2, V0, VS, a0, aS, R0, RS, m, l, j, rB=0, VB=0) :
 		self.A = A
 		self.Z1 = Z1
 		self.Z2 = Z2
-		self.V0 = V0
-		self.VS = VS
+		self.V0 = V0 #units of MeV
+		self.VS = VS #units of MeV
 		self.a0 = a0
 		self.aS = aS
-		self.R0 = R0
-		self.RS = RS
+		self.R0 = R0 #units of fm
+		self.RS = RS #units of fm
 		self.m = m
 		self.l = l
 		self.j = j
