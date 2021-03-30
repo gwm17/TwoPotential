@@ -3,149 +3,140 @@
 import numpy as np 
 import scipy as sp
 from scipy import integrate
+from scipy import interpolate
 import matplotlib.pyplot as plt
 from MassTable import Masses
+from NuclearPotential import *
 import BoundState as BS
-
-HBARC = 193.173 #MeV*fm
-C = 3.0e8*1e15 #fm/s
-HBAR = 6.5821e-16*1e-6 #MeV*s
-ALPHA = 1.0/137.0 #Fine structure const
+import DecayState as DS
 
 def ReducedMass(m1, m2) :
 	return m1*m2/(m1+m2)
 
-def WoodSaxson(r, A, V0, m) :
-	r0 = 1.17
-	a = 0.75
-	R0 = r0*A**(1.0/3.0)
-	return -2.0*m*V0/(HBARC**2.0*(1.0 + np.exp((r-R0)/a)))
-
-def Coulomb(r, Z1, Z2, A, m) :
-	r0 = 1.17
-	R0 = r0*A**(1.0/3.0)
-	if r <= R0 :
-		return ALPHA*2.0*m*Z1*Z2/(2.0*HBARC*R0)*(3.0 - r**2.0/(R0**2.0))
-	else :
-		return ALPHA*2.0*m*Z1*Z2/(HBARC*r)
-
-def Centripital(r, m, l) :
-	if l == 0 :
-		return 0.0
-	else :
-		return (l**2.0 + l)/(r**2.0)
-
-def PotentialV(r, A, Z1, Z2, V0, m, l) :
-	return WoodSaxson(r, A, V0, m) + Coulomb(r, Z1, Z2, A, m) + Centripital(r, m, l)
-
-def PotentialU(r, A, Z1, Z2, V0, m, l, VB, rB):
-	if r<rB :
-		return PotentialV(r, A, Z1, Z2, V0, m, l)
-	else :
-		return VB
-
-def PotentialWTilde(r, A, Z1, Z2, V0, m, l, VB, rB) :
-	if r<rB :
-		return VB
-	else :
-		return PotentialV(r, A, Z1, Z2, V0, m, l)
-
-def FindMaximumHeight(steps, rmax, A, Z1, Z2, V0, m, l) :
-	R = (1.17*A**0.33)/2.0
-	r_range = np.linspace(R, rmax, steps)
-	curMax = 0.0
-	curV = 0.0
-	rMax = 0.0
-	for r in r_range :
-		curV = PotentialV(r, A, Z1, Z2, V0, m, l)
-		if curV > curMax :
-			curMax = curV
-			rMax = r
-	return rMax, curMax
-
-def GeneratePotential(steps, rmax, A, Z1, Z2, V0, m, l, VB, rB, Potential) :
-	r_range = np.linspace(1.0, rmax, steps)
-	V_values = np.zeros(steps)
-	for i in np.arange(0, steps):
-		if VB == 0.0 :
-			V_values[i] = HBARC**2.0/(2.0*m)*Potential(r_range[i], A, Z1, Z2, V0, m, l)
-		else :
-			V_values[i] = HBARC**2.0/(2.0*m)*Potential(r_range[i], A, Z1, Z2, V0, m, l, VB, rB)
-	return V_values, r_range
-
-
-
-def NumerovSolver(nsteps, rmax, k2_b, A, Z1, Z2, V0, m, l, VB, rB, Potential) :
-	dr, r_range = np.linspace(1e-14, rmax, num=nsteps, retstep=True)
-	np.append(r_range, r_range[nsteps-1] + dr)
-	u = np.zeros(nsteps)
-	fac = dr**2.0/12.0
-	#initial boundary conditions
-	u[1] = dr
-	u_pastBoundary = 0
-	for i in np.arange(2, nsteps+1) :
-		k2_3 = k2_b - Potential(r_range[i], A, Z1, Z2, V0, m, l, VB, rB)
-		k2_2 = k2_b - Potential(r_range[i-1], A, Z1, Z2, V0, m, l, VB, rB)
-		k2_1 = k2_b - Potential(r_range[i-2], A, Z1, Z2, V0, m, l, VB, rB)
-		a = 1.0 + fac*k2_3
-		b = 2.0*(1.0 - 5.0*fac*k2_2)
-		c = 1.0 + fac*k2_1
-		if i == nsteps :
-			u_pastBoundary = (b*u[i-1] - c*u[i-2])/a
-		else :	
-			u[i] = (b*u[i-1] - c*u[i-2])/a
-
-	logDerivAtBoundary = (u_pastBoundary - u[nsteps-2])/(2*dr*u[nsteps-1])
-	return logDerivAtBoundary, u
-
-
 def GenerateNormWavefunc(u_array, rmax, nsteps) :
 	r_range = np.linspace(1e-14, rmax, nsteps)
 	#Use Simpson's Rule to integrate
-	value = integrate.simps(u_array, r_range)
-	print("Result: ", value)
-	u_norm = u_array/value
+	psi2 = (u_array)**2.0
+	value = integrate.simps(psi2, r_range)
+	u_norm = u_array/np.sqrt(value)
 	return u_norm, r_range
 
 def main() :
+	print("------------------------------------------")
+	print("------GWM & JCE Two Potential Solver------")
+	"""13N Paramters
 	Ap = 1
 	Zp = 1
-	A12C = 12
-	Z12C = 6
-	V0_guess = 50.0
+	AT = 12
+	ZT = 6
+	V0_guess = 51.8011
+	VS_guess = -0.2*V0_guess
+	a0 = 0.644174
+	aS = 0.644174
+	R0 = 2.96268
+	RS = 2.82043
 	l_mom = 0
-	m12C = Masses.GetMass(6, 12)
-	mproton = Masses.GetMass(1,1)
-	redMass = ReducedMass(m12C, mproton)
-	A = 12
+	j_mom = 0.5
+	Eb = 0.421
+	"""
+
+	#"""147Tm Parameters
+	rWS = 1.17
+	rS = 1.01
+	Ap = 1
 	Zp = 1
+	AT = 146
+	ZT = 68
+	V0_guess = 53.4
+	VS_guess = -0.2*V0_guess
+	a0 = 0.75
+	aS = 0.75
+	R0 = rWS*AT**(1.0/3.0)
+	RS = rS*AT**(1.0/3.0)
+	#l_mom = 5
+	l_mom = 2
+	j_mom = 1.5
+	#j_mom = 5.5
+	Eb = 1.132
+	#Eb = 1.071
+	#"""
 
-	rB, VB = FindMaximumHeight(1000, 3.0*1.17*A12C**(1.0/3.0), A12C, Z12C, Zp, V0_guess, redMass, l_mom)
+	mT = Masses.GetMass(ZT, AT)
+	mproton = Masses.GetMass(1,1)
+	redMass = ReducedMass(mT, mproton)
+	nsamples = 15000
+	Tolerance = 1e-6
+	k2_b = 2.0*redMass*Eb/HBARC**2.0
 
-	print("Maximum height of barrier found to be: ", rB, " with a height of: ",VB)
+	myPotential = NuclearPotential(AT,ZT,Zp,V0_guess,VS_guess,a0,aS,R0,rS,redMass,l_mom,j_mom)
 
-	bsSolver = BS.BoundState(A12C, Z12C, Zp, redMass, l_mom, VB, rB, PotentialU, 0.000001)
+	rB, VB = myPotential.FindMaximumHeight(100000, 3.0*R0)
+	myPotential.VB = VB
+	myPotential.rB = rB
+	VB_MeV = myPotential.Convert2MeV(VB)
+	alpha = np.sqrt(2.0*redMass*(VB_MeV-Eb))/HBARC
+	rMax = rB*1.2
+
+	print("------------------------------------------")
+	print("Maximum height of barrier found to be: ", rB, " with a height of: ", VB_MeV," MeV")
+
+	bsSolver = BS.BoundState(myPotential, Eb, Tolerance)
 
 	print("Solving bound state problem...")
-	V0, uBound = bsSolver.FindV0(0.412, V0_guess,15000,(2.0*rB))
+	V0, uBound = bsSolver.FindV0(V0_guess,nsamples,rMax)
+	myPotential.V0 = V0
+	myPotential.VS = -0.2*V0
 	print("Finished.")
 
 	print("Normalizing bound state wavefunction...")
-	uBoundNorm, r_wavefunc = GenerateNormWavefunc(uBound, 2.0*rB, 15000)
+	uBoundNorm, r_wavefunc = GenerateNormWavefunc(uBound, rMax, nsamples)
 	print("Finished.")
+	print("------------------------------------------")
 
-	V_initial, r_range = GeneratePotential(15000, (2.0*rB),A12C,Z12C,Zp,V0_guess,redMass,l_mom,0,0,PotentialV)
-	V_solved, r_solved = GeneratePotential(15000, (2.0*rB),A12C,Z12C,Zp,V0,redMass,l_mom,0,0,PotentialV)
-	U_initial, r_initial = GeneratePotential(15000, (2.0*rB),A12C,Z12C,Zp,V0_guess,redMass,l_mom,VB,rB,PotentialU)
-	U_final, r_final = GeneratePotential(15000, (2.0*rB),A12C,Z12C,Zp,V0,redMass,l_mom,VB,rB,PotentialU)
-	figure, (ax1, ax2) = plt.subplots(2)
-	#ax1.plot(r_range, V_initial, label="V guessed")
-	#ax1.plot(r_solved, V_solved, label="V solved")
-	ax1.plot(r_initial, U_initial, label="U guessed")
-	ax1.plot(r_initial, U_final, label="U solved")
+	print("Solving scattering problem...")
+	dsSolver = DS.DecayState(myPotential, Eb)
+	uDecay = dsSolver.TPA2(nsamples, rMax)
+	print("Finished.")
+	print("------------------------------------------")
 
-	ax2.plot(r_wavefunc, uBoundNorm, label="Bound State Wave function")
-	plt.legend()
+	print("Interpolating and calculating value of bound state at boundary...")
+	fBoundFunction = interpolate.interp1d(r_wavefunc, uBoundNorm)
+	uBound_atrB = fBoundFunction(rB)
+	print("Finished. Value at boundary: ",uBound_atrB)
+
+	print("Interpolating and calculating value of decay state at boundary...")
+	fDecayFunction = interpolate.interp1d(r_wavefunc, uDecay)
+	uDecay_atrB = fDecayFunction(rB)
+	print("Finished. Value at boundary: ",uDecay_atrB)
+	print("------------------------------------------")
+
+	print("Calculating decay width...")
+	width = (2.0*alpha*HBARC)**2.0/(redMass*np.sqrt(k2_b))*(uBound_atrB*uDecay_atrB)**2.0
+	print("Finished. Width: ", width," MeV")
+	tau = HBAR/width
+	print("Half-life(s): ", np.log(2)*tau)
+	print("------------------------------------------")
+
+	r_plot = np.linspace(1.0, rMax, nsamples)
+
+	V_initial = myPotential.GeneratePotential(r_plot, myPotential.PotentialV)
+	V_solved = myPotential.GeneratePotential(r_plot, myPotential.PotentialV)
+	U_initial = myPotential.GeneratePotential(r_plot, myPotential.PotentialU)
+	U_final = myPotential.GeneratePotential(r_plot, myPotential.PotentialU)
+	V_WS = myPotential.GeneratePotential(r_plot, myPotential.WoodSaxson)
+	figure, (ax1, ax2, ax3) = plt.subplots(3)
+	ax1.plot(r_plot, V_initial, label="V guessed")
+	ax1.plot(r_plot, V_WS, label="Vn")
+	ax1.plot(r_plot, V_solved, label="V solved")
+	ax1.plot(r_plot, U_initial, label="U guessed")
+	ax1.plot(r_plot, U_final, label="U solved")
+	ax1.legend()
+
+	ax2.plot(r_wavefunc, uBoundNorm/r_wavefunc, label="Bound State Wave function")
+	ax2.legend()
+
+	ax3.plot(r_wavefunc, uDecay/r_wavefunc, label="Scattering Wave function")
+	ax3.legend()
 
 
 if __name__ == '__main__':
