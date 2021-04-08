@@ -53,6 +53,8 @@ class BoundState:
 		logder, psi2 = self.NumerovSolver(nsteps, rmax)
 		print("Shooting over V0 to find optimal depth...")
 
+		self.Potential.rB, self.Potential.VB = self.Potential.FindMaximumHeight(100000, 3.0*self.Potential.R0)
+
 		#Secant method
 		while abs(V1 - V2) > self.tolerance:
 			self.Potential.V0 = V2
@@ -61,6 +63,7 @@ class BoundState:
 			logder, psi2 = self.NumerovSolver(nsteps, rmax)
 			deriv = (V2-V1)/(psi2[nsteps-1] - psi1[nsteps-1])
 			V1, V2 =V2, V2 - psi2[nsteps-1]*(V2-V1)/(psi2[nsteps-1] - psi1[nsteps-1])
+			self.Potential.rB, self.Potential.VB = self.Potential.FindMaximumHeight(100000, 3.0*self.Potential.R0)
 
 		print("Found potential depth to be: ",V2," with precison ",self.tolerance)
 		return V2, psi2

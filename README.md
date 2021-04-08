@@ -1,5 +1,5 @@
 # TwoPotential Nuclear Decay Width Calculation
-This is a python repository for calculating decay widths using the Two Potential approach and/or the WKB approximation (S. A. Gurvitz, *Novel Approach to Tunneling Problems*, Phys. Rev. A, 1988). For details on the theory see the Gurvitz article or S. Aberg, *Spherical proton emitters*, Phys. Rev. C, 1997.
+This is a python repository for calculating proton decay widths using the Two Potential approach and/or the WKB approximation (S. A. Gurvitz, *Novel Approach to Tunneling Problems*, Phys. Rev. A, 1988). For details on the theory see the Gurvitz article or S. Aberg, *Spherical proton emitters*, Phys. Rev. C, 1997.
 
 # Python dependancies
 The code is written for `python 3` and should not be used with `python 2`. The libraries `scipy`, `numpy`, `matplotlib`, and `mpmath` are required. These can all be found using your favorite python package manager, either `pip` or `conda`. The shebangs all specify the default user environment, so if you want to use a specific virtual environment, be sure to update these.
@@ -13,9 +13,12 @@ The shooting method is implemented using the secant method for finiding roots. N
 ## WKB Approximation
 The WKB Approximation, or semi-classical limit, involves integrating the momentum over the barrier, which is defined by the classical turning points. Calculating the decay width also involves determining a prefactor, which is defined in the Aberg article. Integration is done using quadrature in the `scipy` package. Turning points are calculated by Brent's method of finding roots, again using the `scipy` implementation.
 
+## Configuration Files
+The calculation is set up to read in a configuration file, typically stored in the data directory. There are example configuration files in the repositiory; the configurations specify the parameters for the potential in either the WKB or TPA calculation, the energy above decay threshold, as well as the name of a new file to store the results in. Details of how this is managed can be found in `Config.py`. This method enables the user to run multiple different calculations in one single execution, without modifying any code. 
+
 # Running the code
 Assuming the proper environment is set, for the Two Potential approach simply run:
-`./TwoPotential.py`
+`./TwoPotential.py <your_config_file>`
 from within the TwoPotential directory. For the WKB Approximation run:
-`./WKB.py`
+`./WKB.py <your_config_file>`
 

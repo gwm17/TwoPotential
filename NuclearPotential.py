@@ -67,13 +67,19 @@ class NuclearPotential :
 		return HBARC**2.0/(2.0*self.m)*(self.WoodSaxson(r) + self.Coulomb(r) + self.Centripital(r))
 
 	def PotentialU(self, r):
-		if r<self.rB :
+		if r<=self.rB :
 			return self.PotentialV(r)
 		else :
 			return self.VB
 
+	def PotentialW(self, r) :
+		if r<=self.rB :
+			return 0
+		else :
+			return self.PotentialV(r) - self.VB
+
 	def PotentialWTilde(self, r) :
-		if r<self.rB :
+		if r<=self.rB :
 			return self.VB
 		else :
 			return self.PotentialV(r)

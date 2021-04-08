@@ -6,6 +6,8 @@ from scipy import optimize
 from scipy.misc import derivative
 from MassTable import Masses
 from NuclearPotential import *
+from Config import *
+import sys
 
 def ReducedMass(m1, m2) :
 	return m1*m2/(m1+m2)
@@ -64,28 +66,31 @@ class WKBPotential:
 def BecchettiDepth(A, Z, E) :
 	return 54.0 - 0.32*E + 0.4*Z/A**(1./3.)+24*(A - 2.0*Z)/A
 
-def main():
+def main(filename):
 	print("--------------------------------")
 	print("------GWM & JCE WKB Solver------")
 	print("--------------------------------")
 
-	#"""147Tm Parameters
+	"""147Tm Parameters
 	rWS = 1.17
 	rSO = 1.01
 	Ap = 1
 	Zp = 1
 	AT = 146
 	ZT = 68
-	Eb = 1.132
+	#Eb = 1.132
+	Eb = 1.071
 	V0 = BecchettiDepth(AT, ZT, Eb)
 	VS = -6.2
 	a0 = 0.75
 	aS = 0.75
 	R0 = rWS*AT**(1./3.)
 	RS = rSO*AT**(1./3.)
-	l_mom = 2
-	j_mom = 2.5
-	#"""
+	#l_mom = 2
+	l_mom = 5
+	#j_mom = 2.5
+	j_mom = 5.5
+	"""
 	"""13N Parameters
 	Ap = 1
 	Zp = 1
@@ -101,23 +106,48 @@ def main():
 	j_mom = 0.5
 	Eb = 0.421
 	"""
-	mT = Masses.GetMass(ZT, AT)
-	mproton = Masses.GetMass(1,1)
-	redMass = ReducedMass(mT, mproton)
 
-	print("Generating problem and calculating classical turning points...")
-	my_wkb = WKBPotential(AT, ZT, Zp, V0, VS, a0, aS, R0, RS, redMass, l_mom, j_mom, Eb)
-	print("Finished.")
-	print("--------------------------------")
+	print("Loading configuration in file: ", filename)
+	myConfig = ConfigFile(filename)
+	if myConfig.IsValid() == False :
+		print("Unable to process the configuration file: ", filename)
+		return
+	print("Loaded succesfully.")
+	print("------------------------------------------")
 
-	print("Performing integration and calculating decay width (this may take some time)...")
-	gamma, halflife = my_wkb.CalculateDecayWidth()
-	print("Finished.")
-	print("--------------------------------")
+	ZT = 0
+	AT = 0
+	Ap = 1
+	Zp = 1
+	mT = 0
+	redMass = 0
+	mproton = Masses.GetMass(Zp,Ap)
 
-	print("Calculated width (MeV): ", gamma)
-	print("Calculated half-life (s): ", halflife)
-	print("--------------------------------")
+	for config in myConfig.configs :
+		print("Running configuration: A: ", config.A, " Z: ", config.Z, " l: ", config.l, " j: ", config.j)
+		AT = config.A - Ap
+		ZT = config.Z - Zp
+		mT = Masses.GetMass(ZT, AT)
+		redMass = ReducedMass(mT, mproton)
+
+		print("------------------------------------------")
+		print("Generating problem and calculating classical turning points...")
+		my_wkb = WKBPotential(AT, ZT, Zp, config.V0, config.VS, config.a0, config.aS, config.R0, config.RS, redMass, config.l, config.j, config.Eb)
+		print("Finished. Turning points are: r0=",my_wkb.r0," r1=",my_wkb.r1," r2=",my_wkb.r2)
+		print("--------------------------------")
+
+		print("Performing integration and calculating decay width (this may take some time)...")
+		gamma, halflife = my_wkb.CalculateDecayWidth()
+		print("Finished.")
+		print("--------------------------------")
+
+		print("Calculated width (MeV): ", gamma)
+		print("Calculated half-life (s): ", halflife)
+		print("--------------------------------")
+		myConfig.WriteResults(config, gamma, halflife,"WKB")
 
 if __name__ == '__main__':
-	main()
+	if len(sys.argv) == 2:
+		main(sys.argv[1])
+	else :
+		print("Incorrect number of command line arguments. Requires config file.")
